@@ -115,6 +115,13 @@ describe("isSubtype", () => {
       grammar: langGrammar,
       isSubtype: [true, false],
     },
+    {
+      label: "supports primitive.Nothing",
+      a: "primitive.Nothing",
+      b: "primitive.Leaf",
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
   ];
 
   for (const c of cases) {

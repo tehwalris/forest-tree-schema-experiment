@@ -142,7 +142,7 @@ const exampleTree: UnknownTreeNode = {
 
 export class TypeContext {
   private knownTypeNames: Set<string>;
-  private supertypesBySubtype = new Map<string, string>();
+  private supertypesBySubtype: Map<string, string>;
 
   constructor(private grammar: Grammar) {
     this.knownTypeNames = new Set([
@@ -152,6 +152,7 @@ export class TypeContext {
       "primitive.Leaf",
       "primitive.String",
       "primitive.Hole",
+      "primitive.Nothing",
     ]);
     const toNamespaced = (typeName: string) => `${grammar.name}.${typeName}`;
     for (const type of [
@@ -160,6 +161,9 @@ export class TypeContext {
     ]) {
       this.knownTypeNames.add(toNamespaced(type));
     }
+    this.supertypesBySubtype = new Map([
+      ["primitive.Nothing", "primitive.Leaf"],
+    ]);
     for (const [supertype, subtypes] of Object.entries(grammar.unions)) {
       for (const subtype of subtypes) {
         if (this.supertypesBySubtype.has(toNamespaced(subtype))) {
