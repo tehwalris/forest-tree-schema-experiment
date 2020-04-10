@@ -3,7 +3,7 @@ interface GrammarTypeWithParameters {
   parameters: { [key: string]: GrammarType } | GrammarType[];
 }
 
-type GrammarType = string | GrammarTypeWithParameters;
+export type GrammarType = string | GrammarTypeWithParameters;
 
 interface Grammar {
   name: string;
