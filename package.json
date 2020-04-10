@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "typescript": "^3.8.3"
+  }
+}
