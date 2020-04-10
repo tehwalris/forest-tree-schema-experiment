@@ -21,6 +21,10 @@ const langGrammar: Grammar = {
     BooleanLiteral: ["BooleanLiteralTrue", "BooleanLiteralFalse"],
   },
   types: {
+    Program: {
+      type: "primitive.List",
+      parameters: ["Statement"],
+    },
     IfStatement: {
       type: "primitive.Keyed",
       parameters: {
@@ -121,10 +125,83 @@ interface Lens<C, A> {
   put: (concrete: C, abstract: A) => C | undefined;
 }
 
-const expressionsAsStatementsLens: Lens<unknown, unknown> = {
-  concrete: "lang.ExpressionStatement",
-  abstract: "lang.Expression",
-  get: (concrete) => keyedToObject(concrete).value,
-  put: (concrete, abstract) =>
-    construct("lang.ExpressionStatement", { expression: abstract }),
+interface Transform {
+  name: string;
+  trigger: "automatic";
+  lens: Lens<unknown, unknown>;
+}
+
+const expressionsAsStatementsTransform: Transform = {
+  name: "expressionsAsStatements",
+  trigger: "automatic",
+  lens: {
+    concrete: "lang.ExpressionStatement",
+    abstract: "lang.Expression",
+    get: (concrete) => keyedToObject(concrete).value,
+    put: (concrete, abstract) =>
+      construct("lang.ExpressionStatement", { expression: abstract }),
+  },
+};
+
+interface TreeNode {
+  type: GrammarType;
+  value: TreeNodeValue;
+}
+
+type TreeNodeValue =
+  | {
+      type: "primitive.Keyed";
+      items: { [key: string]: TreeNode | undefined };
+    }
+  | { type: "primitive.List"; items: TreeNode[] }
+  | { type: "primitive.Leaf" }
+  | { type: "primitive.Option"; value: TreeNode | undefined }
+  | { type: "primitive.String"; value: string }
+  | { type: "primitive.Hole"; value: TreeNode | undefined };
+
+const exampleTree: TreeNode = {
+  type: "lang.Program",
+  value: {
+    type: "primitive.List",
+    items: [
+      {
+        type: "lang.ExpressionStatement",
+        value: {
+          type: "primitive.Keyed",
+          items: {
+            expression: {
+              type: "lang.FunctionCall",
+              value: {
+                type: "primitive.Keyed",
+                items: {
+                  function: {
+                    type: "lang.Identifier",
+                    value: {
+                      type: "primitive.String",
+                      value: "assert",
+                    },
+                  },
+                  parameters: {
+                    type: {
+                      type: "primitive.List",
+                      parameters: ["lang.Expression"],
+                    },
+                    value: {
+                      type: "primitive.List",
+                      items: [
+                        {
+                          type: "lang.BoolLiteralTrue",
+                          value: { type: "primitive.Leaf" },
+                        },
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ],
+  },
 };
