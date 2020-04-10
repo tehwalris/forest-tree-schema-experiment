@@ -11,7 +11,6 @@ export interface Grammar {
   types: { [key: string]: GrammarTypeWithParameters };
 }
 
-
 interface Lens<C extends UnknownTreeNode, A extends UnknownTreeNode> {
   concrete: string;
   abstract: string;
@@ -148,14 +147,55 @@ const exampleTree: UnknownTreeNode = {
 };
 
 export class TypeContext {
-  constructor(private grammar: Grammar) {}
+  private knownTypeNames: Set<string>;
+  private supertypesBySubtype = new Map<string, string>();
+
+  constructor(private grammar: Grammar) {
+    this.knownTypeNames = new Set([
+      "primitive.Hole",
+      "primitive.Keyed",
+      "primitive.List",
+      "primitive.Leaf",
+      "primitive.Option",
+      "primitive.String",
+      "primitive.Hole",
+    ]);
+    const toNamespaced = (typeName: string) => `${grammar.name}.${typeName}`;
+    for (const type of [
+      ...Object.keys(grammar.unions),
+      ...Object.keys(grammar.types),
+    ]) {
+      this.knownTypeNames.add(toNamespaced(type));
+    }
+    for (const [supertype, subtypes] of Object.entries(grammar.unions)) {
+      for (const subtype of subtypes) {
+        if (this.supertypesBySubtype.has(toNamespaced(subtype))) {
+          throw new Error("multiple supertypes are not supported");
+        }
+        this.supertypesBySubtype.set(
+          toNamespaced(subtype),
+          toNamespaced(supertype),
+        );
+      }
+    }
+  }
 
   // isSubtype returns whether a is a subtype of b
   isSubtype(a: GrammarType, b: GrammarType): boolean {
+    if (typeof a === "string") {
+      this.assertValidTypeName(a);
+    }
+    if (typeof b === "string") {
+      this.assertValidTypeName(b);
+    }
     if (a === b) {
       return true;
     }
     if (typeof a === "string" && typeof b === "string") {
+      const aSuper = this.supertypesBySubtype.get(a);
+      if (aSuper !== undefined) {
+        return this.isSubtype(aSuper, b);
+      }
       return false;
     }
     if (
@@ -174,7 +214,7 @@ export class TypeContext {
     }
     if (typeof a !== "string" && typeof b !== "string") {
       return (
-        a.type === b.type &&
+        a.type === b.type && // TODO isSubtype instead of ===
         Array.isArray(a.parameters) &&
         Array.isArray(b.parameters) &&
         a.parameters.length === b.parameters.length &&
@@ -184,5 +224,11 @@ export class TypeContext {
       );
     }
     return false;
+  }
+
+  private assertValidTypeName(type: string) {
+    if (!this.knownTypeNames.has(type)) {
+      throw new Error(`unknown type ${type}`);
+    }
   }
 }

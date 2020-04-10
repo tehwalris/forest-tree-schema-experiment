@@ -1,5 +1,5 @@
 import { GrammarType, Grammar, TypeContext } from "../index";
-import { emptyGrammar } from "../example-grammars";
+import { emptyGrammar, langGrammar } from "../example-grammars";
 
 describe("isSubtype", () => {
   interface Case {
@@ -7,7 +7,8 @@ describe("isSubtype", () => {
     a: GrammarType;
     b: GrammarType;
     grammar: Grammar;
-    isSubtype: [boolean, boolean]; // [isSubtype(a, b), isSubtype(b, a)]
+    isSubtype?: [boolean, boolean]; // [isSubtype(a, b), isSubtype(b, a)]
+    error?: RegExp;
   }
 
   const cases: Case[] = [
@@ -65,13 +66,62 @@ describe("isSubtype", () => {
       grammar: emptyGrammar,
       isSubtype: [false, false],
     },
+    {
+      label: "throws on unknown type",
+      a: { type: "primitive.List", parameters: ["something.Test"] },
+      b: { type: "primitive.List", parameters: ["primitive.Hole"] },
+      grammar: emptyGrammar,
+      error: /\bsomething\.Test\b/,
+    },
+    {
+      label: "works with known non-primitive types (strict subtype)",
+      a: "lang.IfStatement",
+      b: "lang.Statement",
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
+    {
+      label: "works with known non-primitive types (equal)",
+      a: "lang.IfStatement",
+      b: "lang.IfStatement",
+      grammar: langGrammar,
+      isSubtype: [true, true],
+    },
+    {
+      label: "works with known non-primitive types (not subtypes)",
+      a: "lang.IfStatement",
+      b: "lang.BooleanLiteral",
+      grammar: langGrammar,
+      isSubtype: [false, false],
+    },
+    {
+      label: "works with known non-primitive types (deep)",
+      a: "lang.BooleanLiteralTrue",
+      b: "lang.Expression",
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
+    {
+      label: "non-primitive types work as parameters",
+      a: { type: "primitive.Option", parameters: ["lang.BooleanLiteralTrue"] },
+      b: { type: "primitive.Option", parameters: ["lang.Expression"] },
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
   ];
 
   for (const c of cases) {
     test(c.label, () => {
       const context = new TypeContext(c.grammar);
-      expect(context.isSubtype(c.a, c.b)).toEqual(c.isSubtype[0]);
-      expect(context.isSubtype(c.b, c.a)).toEqual(c.isSubtype[1]);
+      if (c.error) {
+        expect(() => context.isSubtype(c.a, c.b)).toThrowError(c.error);
+        expect(() => context.isSubtype(c.b, c.a)).toThrowError(c.error);
+      } else if (c.isSubtype) {
+        expect(context.isSubtype(c.a, c.b)).toEqual(c.isSubtype[0]);
+        expect(context.isSubtype(c.b, c.a)).toEqual(c.isSubtype[1]);
+      } else {
+        throw new Error("either c.isSubtype or c.error must be defined");
+      }
     });
   }
 });
