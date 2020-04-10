@@ -122,6 +122,14 @@ describe("isSubtype", () => {
       grammar: langGrammar,
       isSubtype: [true, false],
     },
+    {
+      label: "named types are subtypes of their anonymous versions",
+      a: "lang.Program",
+      b: { type: "primitive.List", parameters: ["lang.Statement"] },
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
+    // TODO Support named union types (as subtypes of their anonymous merged versions)
   ];
 
   for (const c of cases) {

@@ -140,11 +140,45 @@ const exampleTree: UnknownTreeNode = {
   },
 };
 
+function namespaceGrammar(grammar: Grammar): Grammar {
+  function n<T extends GrammarTypeWithParameters | string>(_type: T): T {
+    if (typeof _type === "string") {
+      return _type.includes(".") ? _type : (`${grammar.name}.${_type}` as any);
+    }
+    const type: T & GrammarTypeWithParameters = _type as any;
+    const output: T & GrammarTypeWithParameters = {
+      ...(type as any),
+      type: n(type.type),
+    };
+    if (Array.isArray(type.parameters)) {
+      output.parameters = type.parameters.map((t) => n(t));
+    } else {
+      const newParameters = { ...type.parameters };
+      for (const [k, v] of Object.entries(newParameters)) {
+        newParameters[k] = v;
+      }
+      output.parameters = newParameters;
+    }
+    return output;
+  }
+
+  const output: Grammar = { name: grammar.name, unions: {}, types: {} };
+  for (const [supertype, subtypes] of Object.entries(grammar.unions)) {
+    output.unions[n(supertype)] = subtypes.map((t) => n(t));
+  }
+  for (const [type, structure] of Object.entries(grammar.types)) {
+    output.types[n(type)] = n(structure);
+  }
+  return output;
+}
+
 export class TypeContext {
   private knownTypeNames: Set<string>;
   private supertypesBySubtype: Map<string, string>;
+  private typeStructures = new Map<string, GrammarTypeWithParameters>();
 
-  constructor(private grammar: Grammar) {
+  constructor(private _grammar: Grammar) {
+    const grammar = namespaceGrammar(_grammar);
     this.knownTypeNames = new Set([
       "primitive.Hole",
       "primitive.Keyed",
@@ -154,26 +188,25 @@ export class TypeContext {
       "primitive.Hole",
       "primitive.Nothing",
     ]);
-    const toNamespaced = (typeName: string) => `${grammar.name}.${typeName}`;
     for (const type of [
       ...Object.keys(grammar.unions),
       ...Object.keys(grammar.types),
     ]) {
-      this.knownTypeNames.add(toNamespaced(type));
+      this.knownTypeNames.add(type);
     }
     this.supertypesBySubtype = new Map([
       ["primitive.Nothing", "primitive.Leaf"],
     ]);
     for (const [supertype, subtypes] of Object.entries(grammar.unions)) {
       for (const subtype of subtypes) {
-        if (this.supertypesBySubtype.has(toNamespaced(subtype))) {
+        if (this.supertypesBySubtype.has(subtype)) {
           throw new Error("multiple supertypes are not supported");
         }
-        this.supertypesBySubtype.set(
-          toNamespaced(subtype),
-          toNamespaced(supertype),
-        );
+        this.supertypesBySubtype.set(subtype, supertype);
       }
+    }
+    for (const [type, structure] of Object.entries(grammar.types)) {
+      this.typeStructures.set(type, structure);
     }
   }
 
@@ -215,6 +248,12 @@ export class TypeContext {
           this.isSubtype(p, (b.parameters as Array<GrammarType>)[i]),
         )
       );
+    }
+    if (typeof a === "string" && typeof b !== "string") {
+      const aStructure = this.typeStructures.get(a);
+      if (aStructure) {
+        return this.isSubtype(aStructure, b);
+      }
     }
     return false;
   }
