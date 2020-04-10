@@ -240,3 +240,11 @@ const exampleTree: UnknownTreeNode = {
     ],
   },
 };
+
+// isSubtype returns whether a is a subtype of b
+export function isSubtype(a: GrammarType, b: GrammarType): boolean {
+  if (a === b) {
+    return true;
+  }
+  return false;
+}
