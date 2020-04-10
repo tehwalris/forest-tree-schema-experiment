@@ -106,19 +106,7 @@ const langGrammar: Grammar = {
   },
 };
 
-function keyedToObject(value: any): { [key: string]: unknown } {
-  return value.keyed;
-}
-
-function construct(type: GrammarType, value: any): unknown {
-  if (typeof type !== "string" && type.type === "primitive.Keyed") {
-    return value.keyed;
-  }
-  console.error(type);
-  throw new Error("unsupported type");
-}
-
-interface Lens<C, A> {
+interface Lens<C extends UnknownTreeNode, A extends UnknownTreeNode> {
   concrete: string;
   abstract: string;
   get: (concrete: C) => A | undefined;
@@ -128,7 +116,7 @@ interface Lens<C, A> {
 interface Transform {
   name: string;
   trigger: "automatic";
-  lens: Lens<unknown, unknown>;
+  lens: Lens<UnknownTreeNode, UnknownTreeNode>;
 }
 
 const expressionsAsStatementsTransform: Transform = {
@@ -137,29 +125,76 @@ const expressionsAsStatementsTransform: Transform = {
   lens: {
     concrete: "lang.ExpressionStatement",
     abstract: "lang.Expression",
-    get: (concrete) => keyedToObject(concrete).value,
-    put: (concrete, abstract) =>
-      construct("lang.ExpressionStatement", { expression: abstract }),
+    get: (concrete) => {
+      if (!isPrimitive("primitive.Keyed", concrete.value)) {
+        return undefined;
+      }
+      return concrete.value.items.expression;
+    },
+    put: (concrete, abstract) => ({
+      type: "lang.ExpressionStatement",
+      value: {
+        type: "primitive.Keyed",
+        items: {
+          expression: abstract,
+        },
+      },
+    }),
   },
 };
 
-interface TreeNode {
+interface TreeNode<V extends TreeNodeValue> {
   type: GrammarType;
-  value: TreeNodeValue;
+  value: V;
 }
 
-type TreeNodeValue =
-  | {
-      type: "primitive.Keyed";
-      items: { [key: string]: TreeNode | undefined };
-    }
-  | { type: "primitive.List"; items: TreeNode[] }
-  | { type: "primitive.Leaf" }
-  | { type: "primitive.Option"; value: TreeNode | undefined }
-  | { type: "primitive.String"; value: string }
-  | { type: "primitive.Hole"; value: TreeNode | undefined };
+type UnknownTreeNode = TreeNode<TreeNodeValue>;
 
-const exampleTree: TreeNode = {
+type TreeNodeValue =
+  | PrimitiveTreeNodeValue
+  | ListTreeNodeValue
+  | LeafTreeNodeValue
+  | OptionTreeNodeValue
+  | StringTreeNodeValue
+  | HoleTreeNodeValue;
+
+interface PrimitiveTreeNodeValue {
+  type: "primitive.Keyed";
+  items: { [key: string]: UnknownTreeNode | undefined };
+}
+
+interface ListTreeNodeValue {
+  type: "primitive.List";
+  items: UnknownTreeNode[];
+}
+
+interface LeafTreeNodeValue {
+  type: "primitive.Leaf";
+}
+
+interface OptionTreeNodeValue {
+  type: "primitive.Option";
+  value: UnknownTreeNode | undefined;
+}
+
+interface StringTreeNodeValue {
+  type: "primitive.String";
+  value: string;
+}
+
+interface HoleTreeNodeValue {
+  type: "primitive.Hole";
+  value: UnknownTreeNode | undefined;
+}
+
+function isPrimitive<T extends TreeNodeValue["type"]>(
+  type: T,
+  value: TreeNodeValue,
+): value is TreeNodeValue & { type: T } {
+  return value.type === type;
+}
+
+const exampleTree: UnknownTreeNode = {
   type: "lang.Program",
   value: {
     type: "primitive.List",
