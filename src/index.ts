@@ -59,7 +59,6 @@ type TreeNodeValue =
   | PrimitiveTreeNodeValue
   | ListTreeNodeValue
   | LeafTreeNodeValue
-  | OptionTreeNodeValue
   | StringTreeNodeValue
   | HoleTreeNodeValue;
 
@@ -75,11 +74,6 @@ interface ListTreeNodeValue {
 
 interface LeafTreeNodeValue {
   type: "primitive.Leaf";
-}
-
-interface OptionTreeNodeValue {
-  type: "primitive.Option";
-  value: UnknownTreeNode | undefined;
 }
 
 interface StringTreeNodeValue {
@@ -156,7 +150,6 @@ export class TypeContext {
       "primitive.Keyed",
       "primitive.List",
       "primitive.Leaf",
-      "primitive.Option",
       "primitive.String",
       "primitive.Hole",
     ]);
@@ -182,12 +175,8 @@ export class TypeContext {
 
   // isSubtype returns whether a is a subtype of b
   isSubtype(a: GrammarType, b: GrammarType): boolean {
-    if (typeof a === "string") {
-      this.assertValidTypeName(a);
-    }
-    if (typeof b === "string") {
-      this.assertValidTypeName(b);
-    }
+    this.assertValidTypeName(typeof a === "string" ? a : a.type);
+    this.assertValidTypeName(typeof b === "string" ? b : b.type);
     if (a === b) {
       return true;
     }
@@ -214,7 +203,7 @@ export class TypeContext {
     }
     if (typeof a !== "string" && typeof b !== "string") {
       return (
-        a.type === b.type && // TODO isSubtype instead of ===
+        a.type === b.type &&
         Array.isArray(a.parameters) &&
         Array.isArray(b.parameters) &&
         a.parameters.length === b.parameters.length &&

@@ -67,11 +67,18 @@ describe("isSubtype", () => {
       isSubtype: [false, false],
     },
     {
-      label: "throws on unknown type",
+      label: "throws on unknown type (in parameter)",
       a: { type: "primitive.List", parameters: ["something.Test"] },
       b: { type: "primitive.List", parameters: ["primitive.Hole"] },
       grammar: emptyGrammar,
       error: /\bsomething\.Test\b/,
+    },
+    {
+      label: "throws on unknown type (in base of type)",
+      a: { type: "primitive.Bla", parameters: ["lang.BooleanLiteralTrue"] },
+      b: { type: "primitive.Bla", parameters: ["lang.Expression"] },
+      grammar: langGrammar,
+      error: /\bprimitive\.Bla\b/,
     },
     {
       label: "works with known non-primitive types (strict subtype)",
@@ -103,8 +110,8 @@ describe("isSubtype", () => {
     },
     {
       label: "non-primitive types work as parameters",
-      a: { type: "primitive.Option", parameters: ["lang.BooleanLiteralTrue"] },
-      b: { type: "primitive.Option", parameters: ["lang.Expression"] },
+      a: { type: "primitive.List", parameters: ["lang.BooleanLiteralTrue"] },
+      b: { type: "primitive.List", parameters: ["lang.Expression"] },
       grammar: langGrammar,
       isSubtype: [true, false],
     },
