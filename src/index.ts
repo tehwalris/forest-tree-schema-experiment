@@ -5,106 +5,12 @@ interface GrammarTypeWithParameters {
 
 export type GrammarType = string | GrammarTypeWithParameters;
 
-interface Grammar {
+export interface Grammar {
   name: string;
   unions: { [key: string]: string[] };
   types: { [key: string]: GrammarTypeWithParameters };
 }
 
-const langGrammar: Grammar = {
-  name: "lang",
-  unions: {
-    Statement: ["IfStatement", "ExpressionStatement", "Declaration", "Block"],
-    Declaration: ["FunctionDeclaration"],
-    Expression: ["Identifier", "BooleanLiteral", "FunctionCall"],
-    Type: ["BooleanKeywordType"],
-    BooleanLiteral: ["BooleanLiteralTrue", "BooleanLiteralFalse"],
-  },
-  types: {
-    Program: {
-      type: "primitive.List",
-      parameters: ["Statement"],
-    },
-    IfStatement: {
-      type: "primitive.Keyed",
-      parameters: {
-        condition: "Expression",
-        thenStatement: "Statement",
-        elseStatement: {
-          type: "primitive.Option",
-          parameters: ["Statement"],
-        },
-      },
-    },
-    ExpressionStatement: {
-      type: "primitive.Keyed",
-      parameters: {
-        expression: "Expression",
-      },
-    },
-    FunctionDeclaration: {
-      type: "primitive.Keyed",
-      parameters: {
-        name: "primitive.String",
-        parameters: {
-          type: "primitive.List",
-          parameters: ["FunctionParameters"],
-        },
-        body: {
-          type: "primitive.Option",
-          parameters: ["Block"],
-        },
-      },
-    },
-    Identifier: {
-      type: "primitive.Keyed",
-      parameters: {
-        name: "primitive.String",
-      },
-    },
-    BooleanLiteralTrue: {
-      type: "primitive.Leaf",
-      parameters: [],
-    },
-    BooleanLiteralFalse: {
-      type: "primitive.Leaf",
-      parameters: [],
-    },
-    FunctionCall: {
-      type: "primitive.Keyed",
-      parameters: {
-        function: "Identifier",
-        arguments: {
-          type: "primitive.List",
-          parameters: ["Expression"],
-        },
-      },
-    },
-    BooleanKeywordType: {
-      type: "primitive.Leaf",
-      parameters: [],
-    },
-    Block: {
-      type: "primitive.Keyed",
-      parameters: {
-        statements: {
-          type: "primitive.List",
-          parameters: ["Statement"],
-        },
-      },
-    },
-    FunctionParameter: {
-      type: "primitive.Keyed",
-      parameters: {
-        name: "primitive.String",
-        type: {
-          type: "primitive.Option",
-          parameters: ["Type"],
-        },
-      },
-    },
-  },
-};
 
 interface Lens<C extends UnknownTreeNode, A extends UnknownTreeNode> {
   concrete: string;
@@ -241,10 +147,42 @@ const exampleTree: UnknownTreeNode = {
   },
 };
 
-// isSubtype returns whether a is a subtype of b
-export function isSubtype(a: GrammarType, b: GrammarType): boolean {
-  if (a === b) {
-    return true;
+export class TypeContext {
+  constructor(private grammar: Grammar) {}
+
+  // isSubtype returns whether a is a subtype of b
+  isSubtype(a: GrammarType, b: GrammarType): boolean {
+    if (a === b) {
+      return true;
+    }
+    if (typeof a === "string" && typeof b === "string") {
+      return false;
+    }
+    if (
+      typeof a !== "string" &&
+      Array.isArray(a.parameters) &&
+      a.parameters.length === 0
+    ) {
+      return this.isSubtype(a.type, b);
+    }
+    if (
+      typeof b !== "string" &&
+      Array.isArray(b.parameters) &&
+      b.parameters.length === 0
+    ) {
+      return this.isSubtype(a, b.type);
+    }
+    if (typeof a !== "string" && typeof b !== "string") {
+      return (
+        a.type === b.type &&
+        Array.isArray(a.parameters) &&
+        Array.isArray(b.parameters) &&
+        a.parameters.length === b.parameters.length &&
+        a.parameters.every((p, i) =>
+          this.isSubtype(p, (b.parameters as Array<GrammarType>)[i]),
+        )
+      );
+    }
+    return false;
   }
-  return false;
 }
