@@ -48,12 +48,12 @@ const expressionsAsStatementsTransform: Transform = {
   },
 };
 
-interface TreeNode<V extends TreeNodeValue> {
+export interface TreeNode<V extends TreeNodeValue> {
   type: GrammarType;
   value: V;
 }
 
-type UnknownTreeNode = TreeNode<TreeNodeValue>;
+export type UnknownTreeNode = TreeNode<TreeNodeValue>;
 
 type TreeNodeValue =
   | PrimitiveTreeNodeValue
@@ -163,7 +163,7 @@ function namespaceGrammar(grammar: Grammar): Grammar {
     } else {
       const newParameters = { ...type.parameters };
       for (const [k, v] of Object.entries(newParameters)) {
-        newParameters[k] = v;
+        newParameters[k] = n(v);
       }
       output.parameters = newParameters;
     }
@@ -213,6 +213,10 @@ export class TypeContext {
         this.supertypesBySubtype.set(subtype, supertype);
       }
     }
+    this.typeStructures.set("primitive.Nothing", {
+      type: "primitive.Leaf",
+      parameters: [],
+    });
     for (const [type, structure] of Object.entries(grammar.types)) {
       this.typeStructures.set(type, structure);
     }
@@ -262,6 +266,52 @@ export class TypeContext {
       if (aStructure) {
         return this.isSubtype(aStructure, b);
       }
+    }
+    return false;
+  }
+
+  isTypeValid(tree: UnknownTreeNode): boolean {
+    if (this.isSubtype(tree.value.type, tree.type)) {
+      return true;
+    }
+    const expectedStructure =
+      typeof tree.type === "string" && this.typeStructures.get(tree.type);
+    if (
+      expectedStructure &&
+      this.isTypeValid({ ...tree, type: expectedStructure })
+    ) {
+      return true;
+    }
+    if (
+      typeof tree.type === "object" &&
+      tree.type.type === "primitive.List" &&
+      Array.isArray(tree.type.parameters) &&
+      tree.type.parameters.length === 1 &&
+      tree.value.type === "primitive.List"
+    ) {
+      const parameterType = tree.type.parameters[0];
+      return tree.value.items.every(
+        (v) => this.isSubtype(v.type, parameterType) && this.isTypeValid(v),
+      );
+    }
+    if (
+      typeof tree.type === "object" &&
+      tree.type.type === "primitive.Keyed" &&
+      !Array.isArray(tree.type.parameters) &&
+      tree.value.type === "primitive.Keyed"
+    ) {
+      const items = tree.value.items;
+      if (
+        Object.keys(tree.type.parameters).length !== Object.keys(items).length
+      ) {
+        return false;
+      }
+      return Object.entries(tree.type.parameters).every(([key, type]) => {
+        const value = items[key];
+        return (
+          value && this.isSubtype(value.type, type) && this.isTypeValid(value)
+        );
+      });
     }
     return false;
   }

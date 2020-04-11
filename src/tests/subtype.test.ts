@@ -1,7 +1,7 @@
 import { GrammarType, Grammar, TypeContext } from "../index";
 import { emptyGrammar, langGrammar } from "../example-grammars";
 
-describe("isSubtype", () => {
+describe("TypeContext.isSubtype", () => {
   interface Case {
     label: string;
     a: GrammarType;
