@@ -310,6 +310,105 @@ describe("TypeContext.isTypeValid", () => {
       grammar: langGrammar,
       valid: false,
     },
+    {
+      label: "trees with correctly typed holes are valid",
+      tree: {
+        type: "lang.ExpressionStatement",
+        value: {
+          type: "primitive.Keyed",
+          items: {
+            expression: {
+              type: {
+                type: "primitive.Hole",
+                parameters: ["lang.BooleanLiteral"],
+              },
+              value: {
+                type: "primitive.Hole",
+              },
+            },
+          },
+        },
+      },
+      grammar: langGrammar,
+      valid: true,
+    },
+    {
+      label: "trees with incorrectly typed holes are invalid",
+      tree: {
+        type: "lang.ExpressionStatement",
+        value: {
+          type: "primitive.Keyed",
+          items: {
+            expression: {
+              type: {
+                type: "primitive.Hole",
+                parameters: ["lang.Statement"],
+              },
+              value: {
+                type: "primitive.Hole",
+              },
+            },
+          },
+        },
+      },
+      grammar: langGrammar,
+      valid: false,
+    },
+    {
+      label: "trees with holes with invalid content are invalid",
+      tree: {
+        type: "lang.ExpressionStatement",
+        value: {
+          type: "primitive.Keyed",
+          items: {
+            expression: {
+              type: {
+                type: "primitive.Hole",
+                parameters: ["lang.BooleanLiteral"],
+              },
+              value: {
+                type: "primitive.Hole",
+                value: {
+                  type: "primitive.Leaf",
+                  value: {
+                    type: "primitive.String",
+                    value: "walrus",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      grammar: langGrammar,
+      valid: false,
+    },
+    {
+      label: "trees with holes with valid but non-matching content are valid",
+      tree: {
+        type: "lang.ExpressionStatement",
+        value: {
+          type: "primitive.Keyed",
+          items: {
+            expression: {
+              type: {
+                type: "primitive.Hole",
+                parameters: ["lang.FunctionCall"],
+              },
+              value: {
+                type: "primitive.Hole",
+                value: {
+                  type: "primitive.Leaf",
+                  value: { type: "primitive.Leaf" },
+                },
+              },
+            },
+          },
+        },
+      },
+      grammar: langGrammar,
+      valid: true,
+    },
   ];
   for (const c of cases) {
     test(c.label, () => {

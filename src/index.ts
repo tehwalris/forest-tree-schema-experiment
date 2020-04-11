@@ -83,7 +83,7 @@ interface StringTreeNodeValue {
 
 interface HoleTreeNodeValue {
   type: "primitive.Hole";
-  value: UnknownTreeNode | undefined;
+  value?: UnknownTreeNode;
 }
 
 function isPrimitive<T extends TreeNodeValue["type"]>(
@@ -193,7 +193,6 @@ export class TypeContext {
       "primitive.List",
       "primitive.Leaf",
       "primitive.String",
-      "primitive.Hole",
       "primitive.Nothing",
     ]);
     for (const type of [
@@ -242,6 +241,22 @@ export class TypeContext {
       a.parameters.length === 0
     ) {
       return this.isSubtype(a.type, b);
+    }
+    if (
+      typeof a !== "string" &&
+      a.type === "primitive.Hole" &&
+      Array.isArray(a.parameters) &&
+      a.parameters.length === 1
+    ) {
+      return this.isSubtype(a.parameters[0], b);
+    }
+    if (
+      typeof b !== "string" &&
+      b.type === "primitive.Hole" &&
+      Array.isArray(b.parameters) &&
+      b.parameters.length === 1
+    ) {
+      return this.isSubtype(a, b.parameters[0]);
     }
     if (
       typeof b !== "string" &&
@@ -312,6 +327,17 @@ export class TypeContext {
           value && this.isSubtype(value.type, type) && this.isTypeValid(value)
         );
       });
+    }
+    if (
+      typeof tree.type === "object" &&
+      tree.type.type === "primitive.Hole" &&
+      Array.isArray(tree.type.parameters) &&
+      tree.type.parameters.length === 1 &&
+      tree.value.type === "primitive.Hole"
+    ) {
+      return (
+        tree.value.value === undefined || this.isTypeValid(tree.value.value)
+      );
     }
     return false;
   }

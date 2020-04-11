@@ -130,6 +130,21 @@ describe("TypeContext.isSubtype", () => {
       isSubtype: [true, false],
     },
     // TODO Support named union types (as subtypes of their anonymous merged versions)
+    {
+      // TODO It's a bit weird to have it defined this way
+      label: "holes have no effect on subtyping",
+      a: { type: "primitive.Hole", parameters: ["lang.Program"] },
+      b: "lang.Program",
+      grammar: langGrammar,
+      isSubtype: [true, true],
+    },
+    {
+      label: "holes have no effect on subtyping (different example)",
+      a: { type: "primitive.Hole", parameters: ["lang.Program"] },
+      b: { type: "primitive.List", parameters: ["lang.Statement"] },
+      grammar: langGrammar,
+      isSubtype: [true, false],
+    },
   ];
 
   for (const c of cases) {
