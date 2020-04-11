@@ -111,8 +111,16 @@ const exampleTree: UnknownTreeNode = {
                   function: {
                     type: "lang.Identifier",
                     value: {
-                      type: "primitive.String",
-                      value: "assert",
+                      type: "primitive.Keyed",
+                      items: {
+                        name: {
+                          type: "primitive.String",
+                          value: {
+                            type: "primitive.String",
+                            value: "assert",
+                          },
+                        },
+                      },
                     },
                   },
                   parameters: {
